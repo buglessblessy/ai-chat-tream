@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+// To this:
 import { 
   Send, Trash2, Sparkles, User, 
-  MessageSquare, LogIn, LogOut, PanelLeftClose, PanelLeft,
-  Plus, Zap, Moon, Sun, Square // Added Square icon
+  MessageSquare,PanelLeftClose, PanelLeft,
+  Plus, Zap, Moon, Sun, Square
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
