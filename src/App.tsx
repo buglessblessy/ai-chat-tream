@@ -28,8 +28,7 @@ interface ChatSession {
 const getAIResponse = async (userText: string, chatHistory: Message[], signal: AbortSignal) => {
   const key = import.meta.env.VITE_GEMINI_KEY;
   // Updated to Stable v1 URL
-  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${key}`;
-
+const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${key}`; 
   if (!key) {
     return "❌ API Key missing! Ensure VITE_GEMINI_KEY is set in your .env file.";
   }
