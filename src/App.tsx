@@ -27,7 +27,10 @@ interface ChatSession {
 // --- API Logic ---
 const getAIResponse = async (userText: string, chatHistory: Message[], signal: AbortSignal) => {
   const key = import.meta.env.VITE_GEMINI_KEY;
-const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${key}`;  if (!key) {
+  // Updated to Stable v1 URL
+  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${key}`;
+
+  if (!key) {
     return "❌ API Key missing! Ensure VITE_GEMINI_KEY is set in your .env file.";
   }
 
@@ -111,7 +114,6 @@ export default function App() {
     };
     setSessions([newSession, ...sessions]);
     setCurrentSessionId(newId);
-    // Close sidebar on mobile after creating chat
     if (window.innerWidth < 1024) setSidebarOpen(false);
   };
 
@@ -196,7 +198,7 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setSidebarOpen(false)}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[50] lg:hidden"
           />
         )}
       </AnimatePresence>
@@ -209,7 +211,7 @@ export default function App() {
           x: isSidebarOpen ? 0 : -280
         }}
         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-        className="fixed lg:relative z-40 bg-[#0a0a0a] lg:bg-black/20 backdrop-blur-3xl border-r border-white/5 flex flex-col h-full shadow-2xl lg:shadow-none"
+        className="fixed lg:relative z-[60] bg-[#0a0a0a] lg:bg-black/20 backdrop-blur-3xl border-r border-white/5 flex flex-col h-full shadow-2xl lg:shadow-none"
       >
         <div className="p-4 w-[280px] flex flex-col h-full">
           <div className="flex items-center justify-between mb-6 lg:mb-4">
@@ -247,8 +249,8 @@ export default function App() {
       </motion.aside>
 
       {/* Main Container */}
-      <main className="flex-1 flex flex-col relative z-10 w-full min-w-0">
-        <header className="h-14 lg:h-16 border-b border-white/5 flex items-center justify-between px-4 lg:px-6 bg-white/5 backdrop-blur-md">
+      <main className="flex-1 flex flex-col relative z-10 w-full min-w-0 h-full">
+        <header className="h-14 lg:h-16 border-b border-white/5 flex items-center justify-between px-4 lg:px-6 bg-white/5 backdrop-blur-md shrink-0">
           <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="p-2 hover:bg-white/10 rounded-lg text-zinc-400 transition-colors">
             {isSidebarOpen ? <PanelLeftClose size={20} /> : <Menu size={20} />}
           </button>
@@ -288,8 +290,8 @@ export default function App() {
         </div>
 
         {/* Footer Area */}
-        <footer className="p-4 lg:p-6 lg:px-[20%] bg-gradient-to-t from-[#050505] via-[#050505] to-transparent">
-          <div className="relative flex items-center bg-white/5 border border-white/10 rounded-2xl px-2 py-1.5 focus-within:border-purple-500/50 transition-all shadow-2xl">
+        <footer className="p-4 lg:p-6 lg:px-[20%] bg-gradient-to-t from-[#050505] via-[#050505] to-transparent shrink-0">
+          <div className="relative flex items-center bg-zinc-900 lg:bg-white/5 border border-white/10 rounded-2xl px-2 py-1.5 focus-within:border-purple-500/50 transition-all shadow-2xl">
             <input 
               value={input} 
               onChange={(e) => setInput(e.target.value)} 
