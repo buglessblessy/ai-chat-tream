@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Send, Trash2, Sparkles, User, 
-  MessageSquare, PanelLeftClose, PanelLeft,
+  MessageSquare, PanelLeftClose,
   Plus, Zap, Moon, Sun, Square, Menu, X
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
