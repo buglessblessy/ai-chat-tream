@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-// To this:
 import { 
   Send, Trash2, Sparkles, User, 
-  MessageSquare,PanelLeftClose, PanelLeft,
-  Plus, Zap, Moon, Sun, Square
+  MessageSquare, PanelLeftClose, PanelLeft,
+  Plus, Zap, Moon, Sun, Square, Menu, X
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -28,10 +27,7 @@ interface ChatSession {
 // --- API Logic ---
 const getAIResponse = async (userText: string, chatHistory: Message[], signal: AbortSignal) => {
   const key = import.meta.env.VITE_GEMINI_KEY;
-  // Updated URL to stable v1 and gemini-1.5-flash
-const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${key}`;
-
-  if (!key) {
+const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${key}`;  if (!key) {
     return "❌ API Key missing! Ensure VITE_GEMINI_KEY is set in your .env file.";
   }
 
@@ -39,7 +35,7 @@ const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-fl
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      signal, // Attach the abort signal here
+      signal,
       body: JSON.stringify({
         contents: chatHistory
           .filter(m => m.id !== "start")
@@ -61,16 +57,21 @@ const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-fl
 };
 
 export default function App() {
-  const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [isSidebarOpen, setSidebarOpen] = useState(false); // Default closed for mobile
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false); // Track if AI is thinking/typing
+  const [isGenerating, setIsGenerating] = useState(false);
   
   const scrollRef = useRef<HTMLDivElement>(null);
-  const abortControllerRef = useRef<AbortController | null>(null); // Ref to hold the abort controller
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Initialize Responsive Sidebar State
+  useEffect(() => {
+    if (window.innerWidth >= 1024) setSidebarOpen(true);
+  }, []);
 
   useEffect(() => {
     const savedSessions = localStorage.getItem("chat_history");
@@ -110,6 +111,8 @@ export default function App() {
     };
     setSessions([newSession, ...sessions]);
     setCurrentSessionId(newId);
+    // Close sidebar on mobile after creating chat
+    if (window.innerWidth < 1024) setSidebarOpen(false);
   };
 
   const deleteSession = (id: string, e: React.MouseEvent) => {
@@ -131,9 +134,7 @@ export default function App() {
     let current = "";
     const chars = text.split("");
     for (let char of chars) {
-      // Check if generation was stopped mid-typing
       if (!abortControllerRef.current || abortControllerRef.current.signal.aborted) break;
-      
       current += char;
       setSessions(prev => prev.map(s => s.id === sessionId ? {
         ...s,
@@ -146,8 +147,6 @@ export default function App() {
 
   const handleSend = async () => {
     if (!input.trim() || isGenerating || !currentSessionId) return;
-
-    // Create new controller for this request
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
@@ -170,9 +169,7 @@ export default function App() {
     setIsTyping(true);
 
     const aiResponse = await getAIResponse(userText, currentSession.messages, controller.signal);
-    
     setIsTyping(false);
-
     if (controller.signal.aborted) return;
 
     const aiId = (Date.now() + 1).toString();
@@ -183,101 +180,144 @@ export default function App() {
   };
 
   return (
-    <div className={`fixed inset-0 flex font-sans transition-colors duration-500 ${isDarkMode ? "bg-[#050505] text-zinc-300" : "bg-zinc-50 text-zinc-900"}`}>
+    <div className={`fixed inset-0 flex font-sans transition-colors duration-500 overflow-hidden ${isDarkMode ? "bg-[#050505] text-zinc-300" : "bg-zinc-50 text-zinc-900"}`}>
       
+      {/* Background Blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] bg-purple-600/10 blur-[120px] rounded-full animate-pulse" />
         <div className="absolute -bottom-[10%] -right-[10%] w-[50%] h-[50%] bg-indigo-600/10 blur-[120px] rounded-full animate-pulse" />
       </div>
 
+      {/* Mobile Sidebar Overlay */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSidebarOpen(false)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar */}
       <motion.aside 
-        animate={{ width: isSidebarOpen ? 280 : 0 }}
-        className="relative z-20 bg-black/20 backdrop-blur-3xl border-r border-white/5 flex flex-col overflow-hidden h-full"
+        initial={false}
+        animate={{ 
+          width: isSidebarOpen ? 280 : 0,
+          x: isSidebarOpen ? 0 : -280
+        }}
+        transition={{ type: "spring", damping: 25, stiffness: 200 }}
+        className="fixed lg:relative z-40 bg-[#0a0a0a] lg:bg-black/20 backdrop-blur-3xl border-r border-white/5 flex flex-col h-full shadow-2xl lg:shadow-none"
       >
         <div className="p-4 w-[280px] flex flex-col h-full">
-          <button onClick={createNewChat} className="flex items-center gap-2 w-full p-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg text-sm font-bold mb-6 hover:scale-[1.02] transition-transform">
+          <div className="flex items-center justify-between mb-6 lg:mb-4">
+             <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-2">Memory Bank</span>
+             <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-2 text-zinc-400"><X size={20}/></button>
+          </div>
+          
+          <button onClick={createNewChat} className="flex items-center gap-2 w-full p-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg text-sm font-bold mb-6 hover:scale-[1.02] transition-transform active:scale-95">
             <Plus size={18} /> New Chat
           </button>
-          <div className="flex-1 overflow-y-auto space-y-2">
+          
+          <div className="flex-1 overflow-y-auto space-y-2 scrollbar-hide">
             {sessions.map(s => (
-              <div key={s.id} onClick={() => setCurrentSessionId(s.id)} className={`group flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border ${currentSessionId === s.id ? "bg-white/10 border-white/10 text-white" : "hover:bg-white/5 text-zinc-500 border-transparent"}`}>
+              <div 
+                key={s.id} 
+                onClick={() => {
+                  setCurrentSessionId(s.id);
+                  if (window.innerWidth < 1024) setSidebarOpen(false);
+                }} 
+                className={`group flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border ${currentSessionId === s.id ? "bg-white/10 border-white/10 text-white" : "hover:bg-white/5 text-zinc-500 border-transparent"}`}
+              >
                 <MessageSquare size={14} />
                 <span className="flex-1 truncate text-xs">{s.title}</span>
-                <Trash2 size={14} className="opacity-0 group-hover:opacity-100 hover:text-red-500" onClick={(e) => deleteSession(s.id, e)} />
+                <Trash2 size={14} className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity" onClick={(e) => deleteSession(s.id, e)} />
               </div>
             ))}
           </div>
+          
           <div className="pt-4 border-t border-white/5 space-y-2">
-             <button onClick={() => setIsDarkMode(!isDarkMode)} className="w-full p-3 flex items-center gap-3 rounded-xl hover:bg-white/5 text-xs text-zinc-400">
-                {isDarkMode ? <Sun size={16} /> : <Moon size={16} />} Mode
+             <button onClick={() => setIsDarkMode(!isDarkMode)} className="w-full p-3 flex items-center gap-3 rounded-xl hover:bg-white/5 text-xs text-zinc-400 transition-colors">
+                {isDarkMode ? <Sun size={16} /> : <Moon size={16} />} {isDarkMode ? "Light Mode" : "Dark Mode"}
              </button>
           </div>
         </div>
       </motion.aside>
 
-      <main className="flex-1 flex flex-col relative z-10">
-        <header className="h-16 border-b border-white/5 flex items-center justify-between px-6 bg-white/5 backdrop-blur-md">
-          <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="p-2 hover:bg-white/10 rounded-lg text-zinc-400">
-            {isSidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeft size={20} />}
+      {/* Main Container */}
+      <main className="flex-1 flex flex-col relative z-10 w-full min-w-0">
+        <header className="h-14 lg:h-16 border-b border-white/5 flex items-center justify-between px-4 lg:px-6 bg-white/5 backdrop-blur-md">
+          <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="p-2 hover:bg-white/10 rounded-lg text-zinc-400 transition-colors">
+            {isSidebarOpen ? <PanelLeftClose size={20} /> : <Menu size={20} />}
           </button>
+          
           <div className="flex items-center gap-2 px-3 py-1 bg-purple-500/10 border border-purple-500/20 rounded-full">
             <Zap size={12} className="text-purple-400 fill-purple-400" />
-            <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">Neural Engine 3.0</span>
+            <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">Neural v1.5</span>
           </div>
         </header>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-10 md:px-[20%] space-y-8 scrollbar-hide">
+        {/* Chat Area */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-8 md:px-[15%] lg:px-[20%] space-y-6 scrollbar-hide">
           <AnimatePresence>
             {currentSession?.messages.map((m) => (
-              <motion.div key={m.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex gap-4 ${m.sender === "user" ? "flex-row-reverse" : "flex-row"}`}>
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${m.sender === "user" ? "bg-indigo-600" : "bg-zinc-800"}`}>
-                  {m.sender === "user" ? <User size={14} /> : <Sparkles size={14} className="text-purple-400" />}
+              <motion.div key={m.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex gap-3 lg:gap-4 ${m.sender === "user" ? "flex-row-reverse" : "flex-row"}`}>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-lg ${m.sender === "user" ? "bg-indigo-600" : "bg-zinc-800"}`}>
+                  {m.sender === "user" ? <User size={14} className="text-white" /> : <Sparkles size={14} className="text-purple-400" />}
                 </div>
-                <div className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm ${m.sender === "user" ? "bg-indigo-600 text-white" : "bg-white/5 backdrop-blur-xl border border-white/10"}`}>
+                <div className={`max-w-[85%] lg:max-w-[80%] px-4 py-3 rounded-2xl text-sm shadow-sm ${m.sender === "user" ? "bg-indigo-600 text-white rounded-tr-none" : "bg-white/5 backdrop-blur-xl border border-white/10 rounded-tl-none"}`}>
                   <ReactMarkdown components={{
                     code({ inline, className, children, ...props }: any) {
                       const match = /language-(\w+)/.exec(className || '');
                       return !inline && match ? (
-                        <SyntaxHighlighter style={atomDark} language={match[1]} PreTag="div" className="rounded-lg my-2 text-xs" {...props}>
-                          {String(children).replace(/\n$/, '')}
-                        </SyntaxHighlighter>
-                      ) : ( <code className="bg-white/10 px-1 rounded" {...props}>{children}</code> );
+                        <div className="relative my-4 overflow-x-auto rounded-lg">
+                          <SyntaxHighlighter style={atomDark} language={match[1]} PreTag="div" className="text-[11px] !m-0 !bg-zinc-900/50" {...props}>
+                            {String(children).replace(/\n$/, '')}
+                          </SyntaxHighlighter>
+                        </div>
+                      ) : ( <code className="bg-white/10 px-1.5 py-0.5 rounded text-[13px]" {...props}>{children}</code> );
                     }
                   }}>{m.text}</ReactMarkdown>
                 </div>
               </motion.div>
             ))}
           </AnimatePresence>
-          {isTyping && <div className="text-[10px] text-purple-500 animate-pulse font-bold ml-12 uppercase tracking-tighter">Connecting to Neural Grid...</div>}
+          {isTyping && <div className="text-[10px] text-purple-500 animate-pulse font-bold ml-12 uppercase tracking-tighter">Syncing Neurons...</div>}
         </div>
 
-        <footer className="p-6 md:px-[20%]">
-          <div className="relative flex items-center bg-white/5 border border-white/10 rounded-2xl px-4 py-2 focus-within:border-purple-500/50 transition-all">
+        {/* Footer Area */}
+        <footer className="p-4 lg:p-6 lg:px-[20%] bg-gradient-to-t from-[#050505] via-[#050505] to-transparent">
+          <div className="relative flex items-center bg-white/5 border border-white/10 rounded-2xl px-2 py-1.5 focus-within:border-purple-500/50 transition-all shadow-2xl">
             <input 
               value={input} 
               onChange={(e) => setInput(e.target.value)} 
-              onKeyDown={(e) => e.key === "Enter" && handleSend()} 
-              placeholder="Message Gemini..." 
-              className="flex-1 bg-transparent outline-none text-sm py-3" 
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()} 
+              placeholder="Message..." 
+              className="flex-1 bg-transparent outline-none text-sm py-2.5 px-3 w-full" 
               disabled={isGenerating}
             />
-            {isGenerating ? (
-              <button 
-                onClick={handleStop} 
-                className="p-2 bg-red-500/20 hover:bg-red-500/40 text-red-500 rounded-xl transition-colors"
-              >
-                <Square size={18} fill="currentColor" />
-              </button>
-            ) : (
-              <button 
-                onClick={handleSend} 
-                disabled={!input.trim()} 
-                className="p-2 bg-purple-600 rounded-xl disabled:opacity-50 hover:bg-purple-500 transition-colors"
-              >
-                <Send size={18} />
-              </button>
-            )}
+            <div className="flex gap-1 pr-1">
+              {isGenerating ? (
+                <button 
+                  onClick={handleStop} 
+                  className="p-2.5 bg-red-500/20 hover:bg-red-500/40 text-red-500 rounded-xl transition-colors active:scale-90"
+                >
+                  <Square size={18} fill="currentColor" />
+                </button>
+              ) : (
+                <button 
+                  onClick={handleSend} 
+                  disabled={!input.trim()} 
+                  className="p-2.5 bg-purple-600 rounded-xl disabled:opacity-30 hover:bg-purple-500 transition-all active:scale-90"
+                >
+                  <Send size={18} className="text-white" />
+                </button>
+              )}
+            </div>
           </div>
+          <p className="text-[9px] text-center text-zinc-600 mt-3 font-bold uppercase tracking-[0.2em]">Powered by Gemini 1.5 Flash</p>
         </footer>
       </main>
     </div>
